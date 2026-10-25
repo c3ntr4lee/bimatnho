@@ -220,8 +220,8 @@
       <section class="scene" id="s-chat">
         <div class="phone">
           <header class="phone-head">
-            <div class="avatar">${f(C.sender).charAt(0)}</div>
-            <div><b>${f(C.sender)}</b><small>● online</small></div>
+            <div class="avatar">${C.chatAvatar ? `<img src="${C.chatAvatar}" alt="">` : f(C.sender).charAt(0)}</div>
+            <div><b>${f(C.chatName || C.sender)}</b><small>● ${f(C.chatStatus || 'online')}</small></div>
           </header>
           <div class="thread"></div>
         </div>
@@ -639,7 +639,7 @@
 
   // ---------- Khởi động ----------
   async function preload() {
-    const srcs = [...new Set([...C.photos.map(p => p.src), C.wishPhoto])];
+    const srcs = [...new Set([...C.photos.map(p => p.src), C.wishPhoto, C.chatAvatar].filter(Boolean))];
     const total = srcs.length + 1;
     let done = 0;
     const fill = $('#loader-fill');
