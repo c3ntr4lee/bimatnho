@@ -5,7 +5,8 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const PALETTE = ['#f7a1c0', '#ffd1dc', '#d9c8ff', '#ffe08a', '#c9f0e1', '#ffffff', '#e0608f'];
+  // màu pháo giấy: pastel, không có màu trắng để đỡ chói
+  const PALETTE = ['#f7a1c0', '#ffc2d6', '#d9c8ff', '#ffe08a', '#c9f0e1', '#e0608f'];
 
   // ---------- Tuổi & ngày (lấy lần sinh nhật gần hôm nay nhất) ----------
   const [by, bm, bd] = C.birthday.split('-').map(Number);
@@ -14,13 +15,21 @@
     .map(k => new Date(now.getFullYear() + k, bm - 1, bd))
     .reduce((a, b) => (Math.abs(b - now) < Math.abs(a - now) ? b : a));
   const age = bdate.getFullYear() - by;
+  // Gửi sớm: trước ngày sinh nhật thì dùng các câu "...Soon" trong config
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const daysLeft = Math.round((bdate - today) / 864e5);
+  const early = daysLeft > 0;
+  const pick = (o, k) => (early && o[k + 'Soon'] != null ? o[k + 'Soon'] : o[k]);
   const pad = n => String(n).padStart(2, '0');
   const dateStr = `${pad(bd)} · ${pad(bm)} · ${bdate.getFullYear()}`;
   const ordinal = n => {
     const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   };
-  const VARS = { name: C.name, fullName: C.fullName, sender: C.sender, age, ageth: ordinal(age), date: dateStr };
+  const VARS = {
+    name: C.name, fullName: C.fullName, sender: C.sender, age, ageth: ordinal(age), date: dateStr,
+    days: daysLeft === 1 ? '1 day' : `${Math.max(daysLeft, 0)} days`, early: early ? 'early ' : ''
+  };
   const f = s => String(s ?? '').replace(/\{(\w+)\}/g, (m, k) => (k in VARS ? VARS[k] : m));
   const plain = s => s.replace(/<[^>]+>/g, '');
   const readTime = s => gsap.utils.clamp(2.6, 6.5, 2.2 + plain(s).length * 0.05);
@@ -127,13 +136,14 @@
   });
 
   // ---------- Hiệu ứng ----------
-  const burst = opts => window.confetti && confetti({ colors: PALETTE, disableForReducedMotion: true, ...opts });
+  // flat: giấy không lật lấp lánh -> đỡ nhấp nháy chói mắt trên điện thoại
+  const burst = opts => window.confetti && confetti({ colors: PALETTE, flat: true, scalar: 0.9, disableForReducedMotion: true, ...opts });
   function bigConfetti() {
-    burst({ particleCount: 120, spread: 90, startVelocity: 45, origin: { y: 0.6 } });
+    burst({ particleCount: 70, spread: 90, startVelocity: 38, origin: { y: 0.6 } });
     setTimeout(() => {
-      burst({ particleCount: 70, angle: 60, spread: 60, origin: { x: 0, y: 0.7 } });
-      burst({ particleCount: 70, angle: 120, spread: 60, origin: { x: 1, y: 0.7 } });
-    }, 250);
+      burst({ particleCount: 35, angle: 60, spread: 60, startVelocity: 40, origin: { x: 0, y: 0.75 } });
+      burst({ particleCount: 35, angle: 120, spread: 60, startVelocity: 40, origin: { x: 1, y: 0.75 } });
+    }, 350);
   }
   function heartRain(ms = 2600) {
     if (!window.confetti) return;
@@ -208,13 +218,13 @@
     stage.innerHTML = `
       <section class="scene" id="s-intro">
         <h1 class="hi">${f(C.intro.hi)}</h1>
-        <p class="hi-sub">${f(C.intro.sub)}</p>
+        <p class="hi-sub">${f(pick(C.intro, 'sub'))}</p>
       </section>
 
       <section class="scene" id="s-bday">
         <p class="bday-date">${f(C.intro.date)}</p>
-        <h1 class="bday-title">${f(C.intro.birthday)}</h1>
-        <p class="bday-age script">${f(C.intro.age)}</p>
+        <h1 class="bday-title">${f(pick(C.intro, 'birthday'))}</h1>
+        <p class="bday-age script">${f(pick(C.intro, 'age'))}</p>
       </section>
 
       <section class="scene" id="s-chat">
@@ -332,7 +342,7 @@
       .from($('.bday-date', b), { autoAlpha: 0, letterSpacing: '1em', duration: 1.1, ease: 'power2.out' })
       .from(title, { autoAlpha: 0, y: -70, rotation: () => gsap.utils.random(-30, 30), duration: 0.9, ease: 'bounce.out', stagger: 0.045 }, '-=0.5')
       .from($('.bday-age', b), { autoAlpha: 0, scale: 0.3, duration: 0.9, ease: 'elastic.out(1, 0.5)' })
-      .call(() => burst({ particleCount: 70, spread: 75, origin: { y: 0.62 } })));
+      .call(() => burst({ particleCount: 45, spread: 75, origin: { y: 0.62 } })));
     await hold(3.6);
     await leave(b);
   }
@@ -491,10 +501,10 @@
     const chars = splitChars(hbd);
     await play(gsap.timeline()
       .to($$('.cake-hint, .cake-actions, .cake-title', s), { autoAlpha: 0, duration: 0.4 })
-      // bật đèn lại
+      // bật đèn lại từ từ rồi mới bắn pháo giấy, tránh bị lóa
       .call(() => s.classList.remove('lights-off'))
-      .to($('.cake-dim', s), { autoAlpha: 0, duration: 0.6 }, '<')
-      .call(bigConfetti)
+      .to($('.cake-dim', s), { autoAlpha: 0, duration: 1.6, ease: 'power1.inOut' }, '<')
+      .call(bigConfetti, null, '-=0.5')
       .set(hbd, { autoAlpha: 1 })
       .from(chars, { autoAlpha: 0, y: -50, rotation: 150, skewX: 30, duration: 0.7, ease: 'elastic.out(1, 0.5)', stagger: 0.06 })
       .to(chars, { scale: 1.3, rotationY: 180, duration: 0.45, stagger: 0.05 })
@@ -627,7 +637,7 @@
       .set(gift, { rotation: 0 })
       .to('.gift-lid', { y: -190, x: 70, rotation: 38, autoAlpha: 0, duration: 0.9, ease: 'power2.out' })
       .to('.gift-rays', { autoAlpha: 1, scale: 1.2, rotation: 40, duration: 1.2, ease: 'power2.out' }, '<')
-      .call(() => burst({ particleCount: 140, spread: 100, startVelocity: 40, origin }), null, '<0.1')
+      .call(() => burst({ particleCount: 80, spread: 100, startVelocity: 36, origin }), null, '<0.1')
       .to(['.gift-title', '.gift-hint', '.gift-note'], { autoAlpha: 0, y: -10, duration: 0.4 }, '<')
       .to('#s-gift', { autoAlpha: 0, scale: 1.1, duration: 0.7, ease: 'power2.in' }, '+=0.5')
       .call(() => {
