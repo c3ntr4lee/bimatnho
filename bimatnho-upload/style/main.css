@@ -82,7 +82,8 @@ button { font-family: inherit; color: inherit; }
   opacity: 0; visibility: hidden;
 }
 .w { display: inline-block; white-space: nowrap; }
-.ch { display: inline-block; }
+/* chừa chỗ cho nét chữ viết tay tràn ra ngoài, tránh bị cắt góc trên iPhone */
+.ch { display: inline-block; padding: .14em .1em; margin: -.14em -.1em; }
 
 /* ===================== Hộp quà ===================== */
 #s-gift { gap: 8px; }
